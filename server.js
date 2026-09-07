@@ -19,6 +19,31 @@ Kamu adalah seorang Travel Assistant yang ramah dan membantu.
 Berikan rekomendasi tempat wisata dan tips liburan dengan bahasa santai.
 `;
 
+// Helper untuk fetch cuaca dengan TIMEOUT maksimal 1.5 detik
+async function fetchWeatherWithTimeout() {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), 1500); // Batas waktu 1.5 detik
+
+	try {
+		const baseUrl = process.env.WEATHER_API_URL || 'https://api.open-meteo.com/v1';
+		const weatherRes = await fetch(`${baseUrl}/forecast?latitude=-6.2088&longitude=106.8456&current_weather=true`, { signal: controller.signal });
+		clearTimeout(timeoutId);
+
+		const weatherData = await weatherRes.json();
+		const temp = weatherData.current_weather?.temperature;
+
+		if (temp !== undefined) {
+			return `Suhu terkini di area tujuan utama (Jakarta & sekitarnya) adalah ${temp}°C.`;
+		}
+	} catch (err) {
+		console.warn('Weather API timeout atau gagal, dilewati...');
+	} finally {
+		clearTimeout(timeoutId);
+	}
+
+	return 'Data cuaca tidak tersedia saat ini.';
+}
+
 app.post('/api/chat', async (req, res) => {
 	try {
 		const { message } = req.body;
@@ -29,21 +54,10 @@ app.post('/api/chat', async (req, res) => {
 			});
 		}
 
-		// 1. Integrasi API Eksternal (Data Cuaca Real-Time)
-		let weatherInfo = 'Data cuaca tidak tersedia saat ini.';
-		try {
-			const weatherRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-6.2088&longitude=106.8456&current_weather=true');
-			const weatherData = await weatherRes.json();
-			const temp = weatherData.current_weather?.temperature;
+		// 1. Ambil data cuaca (maksimal ditunggu 1.5 detik)
+		const weatherInfo = await fetchWeatherWithTimeout();
 
-			if (temp !== undefined) {
-				weatherInfo = `Suhu terkini di area tujuan utama (Jakarta & sekitarnya) adalah ${temp}°C.`;
-			}
-		} catch (weatherErr) {
-			console.warn('Gagal mengambil data cuaca eksternal:', weatherErr);
-		}
-
-		// 2. Gabungkan data cuaca eksternal ke System Instruction
+		// 2. Gabungkan System Instruction
 		const dynamicSystemInstruction = `
             ${BASE_SYSTEM_INSTRUCTION}
             
@@ -52,9 +66,9 @@ app.post('/api/chat', async (req, res) => {
             Gunakan data suhu di atas jika pengguna bertanya tentang kondisi cuaca atau tips liburan hari ini.
         `;
 
-		// 3. Panggil API Gemini dengan model resmi
+		// 3. Panggil Gemini dengan model cepat & resmi
 		const response = await ai.models.generateContent({
-            model: "gemini-3.6-flash",
+			model: 'gemini-3.6-flash',
 			contents: message,
 			config: {
 				systemInstruction: dynamicSystemInstruction,
