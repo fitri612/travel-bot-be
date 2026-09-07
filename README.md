@@ -2,6 +2,8 @@
 
 Travel Bot adalah AI-powered travel assistant yang membantu pengguna mendapatkan rekomendasi wisata dan tips liburan dengan bahasa yang santai.
 
+<img width="830" height="496" alt="Screenshot 2026-09-07 at 14 51 32" src="https://github.com/user-attachments/assets/91fa7487-7c4d-4495-8f7e-f0b374cb863b" />
+
 ## ✨ Features
 
 * 🤖 AI Travel Assistant menggunakan **Google Gemini**
